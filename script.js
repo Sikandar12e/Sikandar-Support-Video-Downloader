@@ -26,20 +26,32 @@ downloadBtn.addEventListener('click', () => {
     // NOTE: This is a demo. In a real website, you would make a fetch request 
     // to your backend server here.
     setTimeout(() => {
-        // This is a fake response object for demonstration.
-        const fakeResponse = {
-            success: true,
-            title: 'आपका वीडियो यहाँ है!',
-            thumbnail: `https://placehold.co/600x400/1e294b/ffffff?text=Video+Thumbnail`,
-            downloadUrl: '#' // The real download link would come from the backend
-        };
+       // Upar wale code ki jagah is NAYE code ko paste karein
 
-        if (fakeResponse.success) {
-            showResult(fakeResponse);
-        } else {
-            showError('वीडियो डाउनलोड करने में विफल। कृपया पुनः प्रयास करें।');
-        }
-    }, 2500); // Simulate a 2.5-second delay
+// **IMPORTANT:** Neeche di gayi line mein URL ko apne Render App ke URL se badlein
+const backendUrl = 'https://sikandar-downloader-api.onrender.com/download'; // Yahaan apna Render URL daalein
+
+try {
+    const response = await fetch(backendUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url: url }),
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+        showResult(data);
+    } else {
+        showError(data.error || 'Ek anjaan truti hui.');
+    }
+
+} catch (error) {
+    console.error('Fetch Error:', error);
+    showError('Server se connect nahi ho pa raha hai.');
+}
 });
 
 // Function to show the loading spinner
