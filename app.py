@@ -1,59 +1,92 @@
-# app.py
-
-# Step 1: Import necessary libraries
-# Zaroori libraries ko import karna
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from yt_dlp import YoutubeDL
 from flask_cors import CORS
 
-# Step 2: Initialize the Flask app
-# Flask app shuru karna
-app = Flask(__name__)
-# CORS ko enable karna taaki aapki frontend website isse connect kar sake
-CORS(app) 
+app = Flask(__name__, static_folder='.', template_folder='.')
+CORS(app)
 
-# Step 3: Create a route for downloading
-# '/download' naam ka ek API endpoint banana
+
+# Serve index.html at root
+@app.route('/')
+def serve_home():
+    return send_from_directory('.', 'index.html')
+
+
+# Serve static files (script.js, style.css, etc.)
+@app.route('/<path:path>')
+def serve_static(path):
+    return send_from_directory('.', path)
+
+
+# Video/audio downloader route
 @app.route('/download', methods=['POST'])
 def download_video():
-    # Frontend se bheje gaye JSON data se URL nikalna
     data = request.get_json()
     url = data.get('url')
+    mode = data.get('mode', 'video')  # default is video
 
-    # Agar URL nahi hai to error bhejna
     if not url:
-        return jsonify({'error': 'URL is required'}), 400
+        return jsonify({'success': False, 'error': 'URL is required'}), 400
 
     try:
-        # yt-dlp library ka istemal karke video ki info nikalna
-        ydl_opts = {
-            'format': 'best',
-            'noplaylist': True,
-        }
-        with YoutubeDL(ydl_opts) as ydl:
-            # Hum video download nahi kar rahe, sirf uski jaankari nikal rahe hain
-            info = ydl.extract_info(url, download=False)
-            
-            # Video ka direct download link, title, aur thumbnail nikalna
-            video_url = info.get('url')
-            title = info.get('title', 'video')
-            thumbnail = info.get('thumbnail')
-
-            # Frontend ko bhejne ke liye response taiyar karna
-            response_data = {
-                'success': True,
-                'title': title,
-                'thumbnail': thumbnail,
-                'download_url': video_url
+        # Dynamic options based on mode
+        if mode == 'audio':
+            ydl_opts = {
+                'format':
+                'bestaudio/best',
+                'noplaylist':
+                True,
+                'quiet':
+                True,
+                'extract_audio':
+                True,
+                'postprocessors': [{
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'mp3',
+                    'preferredquality': '192',
+                }],
+                'forceurl':
+                True,
+                'simulate':
+                True,
+                'forcejson':
+                True,
+                'headers': {
+                    'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile)',
+                }
             }
-            return jsonify(response_data)
+        else:  # video
+            ydl_opts = {
+                'format': 'best',
+                'noplaylist': True,
+                'quiet': True,
+                'forceurl': True,
+                'simulate': True,
+                'forcejson': True,
+                'headers': {
+                    'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile)',
+                }
+            }
+
+        # Extract video/audio info
+        with YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            return jsonify({
+                'success': True,
+                'title': info.get('title', 'Untitled'),
+                'thumbnail': info.get('thumbnail'),
+                'download_url': info.get('url'),
+                'mode': mode
+            })
 
     except Exception as e:
-        # Agar koi error aaye to use frontend ko bhejna
         print(f"Error: {str(e)}")
-        return jsonify({'success': False, 'error': f'Video process nahi ho saka. Shayad URL galat hai.'}), 500
+        return jsonify({
+            'success': False,
+            'error': 'Download failed. Check the URL.'
+        }), 500
 
-# Ye line server ko run karti hai (Hosting ke liye zaroori)
+
+# Run the app
 if __name__ == '__main__':
-    # Production ke liye host='0.0.0.0' zaroori hai
     app.run(host='0.0.0.0', port=5000)
