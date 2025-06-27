@@ -1,99 +1,53 @@
-// Get references to the HTML elements
-const downloadBtn = document.getElementById('downloadBtn');
-const videoUrlInput = document.getElementById('videoUrl');
-const resultDiv = document.getElementById('result');
+document.getElementById("downloadBtn").addEventListener("click", async () => {
+    const videoUrl = document.getElementById("videoUrl").value.trim();
+    const mode = document.querySelector('input[name="mode"]:checked').value;
+    const resultBox = document.getElementById("result");
 
-// Add an event listener to the download button
-downloadBtn.addEventListener('click', () => {
-    const url = videoUrlInput.value.trim();
+    resultBox.innerHTML = "";
 
-    // Step 1: Validate the input URL
-    if (url === '') {
-        showError('कृपया एक मान्य वीडियो URL दर्ज करें।');
-        return;
-    }
-    
-    // Check if the URL is from Instagram or Pinterest
-    if (!url.includes('instagram.com') && !url.includes('pinterest.com')) {
-        showError('केवल Instagram और Pinterest के URL ही समर्थित हैं।');
+    if (!videoUrl) {
+        resultBox.innerHTML =
+            "<p class='text-red-400'>❌ कृपया वीडियो का URL दर्ज करें।</p>";
         return;
     }
 
-    // Step 2: Show a loading indicator to the user
-    showLoader();
+    resultBox.innerHTML = `<div class="flex justify-center"><div class="loader"></div></div>`;
 
-    // Step 3: Simulate a backend API call
-    // NOTE: This is a demo. In a real website, you would make a fetch request 
-    // to your backend server here.
-    setTimeout(() => {
-       // Upar wale code ki jagah is NAYE code ko paste karein
+    try {
+        const response = await fetch("/download", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: videoUrl, mode: mode }),
+        });
 
-// **IMPORTANT:** Neeche di gayi line mein URL ko apne Render App ke URL se badlein
-const backendUrl = 'https://sikandar-downloader-api.onrender.com/download'; // Yahaan apna Render URL daalein
+        const data = await response.json();
 
-try {
-    const response = await fetch(backendUrl, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ url: url }),
-    });
-
-    const data = await response.json();
-
-    if (data.success) {
-        showResult(data);
-    } else {
-        showError(data.error || 'Ek anjaan truti hui.');
-    }
-
-} catch (error) {
-    console.error('Fetch Error:', error);
-    showError('Server se connect nahi ho pa raha hai.');
-}
-});
-
-// Function to show the loading spinner
-function showLoader() {
-    resultDiv.innerHTML = `
-        <div class="flex flex-col items-center justify-center bg-gray-800/50 p-6 rounded-lg">
-            <div class="loader mb-4"></div>
-            <p class="text-gray-300">वीडियो प्रोसेस हो रहा है...</p>
-        </div>
-    `;
-}
-
-// Function to show an error message
-function showError(message) {
-    resultDiv.innerHTML = `
-        <div class="bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-lg text-center" role="alert">
-            <strong class="font-bold">त्रुटि:</strong>
-            <span class="block sm:inline">${message}</span>
-        </div>
-    `;
-}
-
-// Function to display the final result with a download link
-function showResult(data) {
-    resultDiv.innerHTML = `
-        <div class="bg-gray-800/50 border border-gray-700 rounded-lg overflow-hidden animate-fade-in">
-            <div class="md:flex">
-                <div class="md:flex-shrink-0">
-                    <img class="h-48 w-full object-cover md:w-48" src="${data.thumbnail}" alt="Video thumbnail">
-                </div>
-                <div class="p-6 flex flex-col justify-between">
-                    <div>
-                        <p class="text-lg font-semibold text-white">${data.title}</p>
+        if (data.success) {
+            const label =
+                mode === "audio"
+                    ? "🎵 ऑडियो डाउनलोड करें (MP3)"
+                    : "🎥 वीडियो डाउनलोड करें";
+            resultBox.innerHTML = `
+                <div class="mt-6 animate-fade-in text-center">
+                    <img src="${data.thumbnail}" alt="Thumbnail" class="w-full rounded-lg mb-4 max-h-64 object-cover mx-auto">
+                    <h2 class="text-lg font-semibold mb-2">${data.title}</h2>
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                        <a href="${data.download_url}" class="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-lg text-white font-semibold inline-block" target="_blank" download>
+                            ${label}
+                        </a>
+                        <a href="${data.thumbnail}" class="bg-yellow-500 hover:bg-yellow-600 px-6 py-2 rounded-lg text-white font-semibold inline-block" target="_blank" download>
+                            🖼️ थंबनेल डाउनलोड करें
+                        </a>
                     </div>
-                    <a href="${data.downloadUrl}" download class="mt-4 md:mt-0 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg inline-flex items-center justify-center transition duration-300">
-                        <svg class="h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                        अभी डाउनलोड करें
-                    </a>
                 </div>
-            </div>
-        </div>
-    `;
-}
+            `;
+        } else {
+            resultBox.innerHTML =
+                "<p class='text-red-400'>❌ डाउनलोड नहीं हो सका।</p>";
+        }
+    } catch (error) {
+        console.error(error);
+        resultBox.innerHTML =
+            "<p class='text-red-400'>❌ कुछ गड़बड़ हो गई। कृपया फिर से प्रयास करें।</p>";
+    }
+});
